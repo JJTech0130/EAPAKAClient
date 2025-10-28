@@ -32,10 +32,12 @@ private fun getAllIPAddresses(): List<String> {
 }
 
 @Composable
-fun StatusDisplay() {
+fun StatusDisplay(permission: Boolean) {
     val ipAddresses = getAllIPAddresses()
     Column(modifier = Modifier.padding(16.dp)) {
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(100.dp))
+        Text(text="AppOp Permission Granted? $permission", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(8.dp))
         Text(text = "IP Addresses:", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(8.dp))
 
