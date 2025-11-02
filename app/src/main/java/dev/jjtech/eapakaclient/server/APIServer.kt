@@ -1,8 +1,12 @@
 package dev.jjtech.eapakaclient.server
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.telephony.SubscriptionManager
+import android.telephony.TelephonyManager
 import android.util.Log
+import dev.jjtech.eapakaclient.eapaka.BytesConverter.convertBytesToHexString
+import dev.jjtech.eapakaclient.eapaka.EapAkaChallenge
 import dev.jjtech.eapakaclient.eapaka.EapAkaChallenge.parseEapAkaChallenge
 import dev.jjtech.eapakaclient.eapaka.EapAkaResponse.respondToEapAkaChallenge
 import kotlinx.serialization.*
@@ -84,6 +88,13 @@ class APIServer(private val ctx: Context, private val port: Int) {
                         statusLine = "HTTP/1.1 200 OK"
                     }
 
+                    method == "GET" && path.startsWith("/?") -> {
+                        // Parse the parameters
+                        val params = parseQueryParams(path)
+                        responseBody = handleQuery(params)
+                        statusLine = "HTTP/1.1 200 OK"
+                    }
+
                     else -> {
                         responseBody = json.encodeToString(mapOf("error" to "Not found"))
                         statusLine = "HTTP/1.1 404 Not Found"
@@ -135,5 +146,52 @@ class APIServer(private val ctx: Context, private val port: Int) {
             port = port
         )
         return json.encodeToString(info)
+    }
+
+    private fun parseQueryParams(path: String): Map<String, String> {
+        val queryStart = path.indexOf('?')
+        if (queryStart == -1) return emptyMap()
+        val query = path.substring(queryStart + 1)
+        return query.split("&").mapNotNull {
+            val parts = it.split("=", limit = 2)
+            if (parts.size == 2) parts[0] to parts[1] else null
+        }.toMap()
+    }
+
+    @SuppressLint("MissingPermission", "HardwareIds")
+    private fun handleQuery(params: Map<String, String>): String {
+        return try {
+            when (params["type"]) {
+                "imsi" -> {
+                    val subId = SubscriptionManager.getDefaultSmsSubscriptionId()
+                    val telephonyManager: TelephonyManager =
+                        ctx.getSystemService<TelephonyManager>(TelephonyManager::class.java)
+                            .createForSubscriptionId(subId)
+                    //val tm = ctx.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as SubscriptionManager
+                    val imsi = telephonyManager.subscriberId
+                    json.encodeToString(mapOf("imsi" to imsi))
+                }
+
+                "rand-autn" -> {
+                    val rand = params["rand"] ?: throw IllegalArgumentException("Missing rand")
+                    val autn = params["autn"] ?: throw IllegalArgumentException("Missing autn")
+
+                    val defaultVoiceSubId = SubscriptionManager.getDefaultSmsSubscriptionId()
+                    val challenge = EapAkaChallenge(rand, autn);
+
+                    val result = respondToEapAkaChallenge(ctx, defaultVoiceSubId, challenge, "nai.epc")
+                    val secContext = result.rawContext
+                    val res = convertBytesToHexString(secContext.res)
+                    val ck = convertBytesToHexString(secContext.ck)
+                    val ik = convertBytesToHexString(secContext.ik)
+
+                    json.encodeToString(mapOf("res" to res, "ck" to ck, "ik" to ik))
+                }
+
+                else -> json.encodeToString(mapOf("error" to "Unknown type"))
+            }
+        } catch (e: Exception) {
+            json.encodeToString(mapOf("error" to (e.message ?: "Unknown error")))
+        }
     }
 }

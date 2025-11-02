@@ -57,6 +57,8 @@ public class EapAkaResponse {
     // RFC 4187 Section 9.6 EAP-Response/AKA-Synchronization-Failure
     private String mSynchronizationFailureResponse;
 
+    public EapAkaSecurityContext rawContext;
+
     private EapAkaResponse() {}
 
     /** Returns EAP-Response/AKA-Challenge, if authentication success. Otherwise {@code null}. */
@@ -123,6 +125,8 @@ public class EapAkaResponse {
 
         EapAkaSecurityContext securityContext = EapAkaSecurityContext.from(response);
         EapAkaResponse result = new EapAkaResponse();
+        result.rawContext = securityContext;
+
 
         if (securityContext.getRes() != null
                 && securityContext.getIk() != null
@@ -195,6 +199,7 @@ public class EapAkaResponse {
             return null;
         }
 
+
         byte[] message = createEapAkaChallengeResponse(res, identifier);
 
         Log.i("aut", "auth" + bytesToHex(message));
@@ -209,6 +214,8 @@ public class EapAkaResponse {
         // The value start index is 8 + AT_RES (4 + res.length) + header of AT_MAC (4)
         int index = 8 + 4 + res.length + 4;
         System.arraycopy(mac, 0, message, index, mac.length);
+
+        Log.i("aut", "auth2 " + bytesToHex(message));
 
         return message;
     }

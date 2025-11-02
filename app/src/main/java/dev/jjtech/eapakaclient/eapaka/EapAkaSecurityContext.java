@@ -29,7 +29,7 @@ import androidx.annotation.Nullable;
  *
  * <p>Reference ETSI TS 131 102, Section 7.1.2.1 GSM/3G security context.
  */
-class EapAkaSecurityContext {
+public class EapAkaSecurityContext {
     private static final String TAG = "ServiceEntitlement";
 
     private static final byte RESPONSE_TAG_SUCCESS = (byte) 0xDB;

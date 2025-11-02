@@ -18,6 +18,8 @@ package dev.jjtech.eapakaclient.eapaka;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import static dev.jjtech.eapakaclient.eapaka.BytesConverter.hexStringToByteArray;
+
 import android.util.Base64;
 import android.util.Log;
 
@@ -51,6 +53,18 @@ public class EapAkaChallenge {
     private String mSimAuthenticationRequest;
 
     private EapAkaChallenge() {}
+
+    public EapAkaChallenge(String randHex, String autnHex) {
+        this.mRand = hexStringToByteArray(randHex);
+        this.mAutn = hexStringToByteArray(autnHex);
+
+        if (mRand.length != RAND_LENGTH || mAutn.length != AUTN_LENGTH) {
+            throw new IllegalArgumentException("RAND or AUTN length invalid");
+        }
+
+        this.mSimAuthenticationRequest = getSimAuthChallengeData();
+    }
+
 
     /** Parses a EAP-AKA challenge request message encoded in base64. */
     public static EapAkaChallenge parseEapAkaChallenge(String challenge) {
